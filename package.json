@@ -1,0 +1,22 @@
+{
+  "name": "c2rmf-planning",
+  "version": "1.0.0",
+  "private": true,
+  "description": "C2RMF — Outil interne de planification hebdomadaire des interventions (rôles : administrateur, gestionnaire, visiteur)",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "migrate": "node server.js migrate",
+    "create-admin": "node server.js create-admin"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "argon2": "^0.41.1",
+    "connect-pg-simple": "^9.0.1",
+    "express": "^4.21.2",
+    "express-session": "^1.18.1",
+    "pg": "^8.13.1"
+  }
+}

@@ -1,0 +1,843 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>C2RMF — Planification des interventions</title>
+<style>
+  :root {
+    --rouge: #8B0000;
+    --rouge-fonce: #5F0000;
+    --rouge-tint: #f9efef;
+    --or: #b8935a;
+    --ok: #16a34a;
+    --attention: #d97706;
+    --gris: #f5f6f8;
+    --bord: #e2e8f0;
+    --texte: #334155;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; color: var(--texte); background: var(--gris); }
+  button { font-family: inherit; cursor: pointer; }
+  input, select, textarea { font-family: inherit; font-size: 14px; padding: 8px 10px; border: 1px solid #cbd5e1; border-radius: 8px; width: 100%; background: #fff; color: var(--texte); }
+  input:focus, select:focus, textarea:focus { outline: 2px solid rgba(139,0,0,.25); border-color: var(--rouge); }
+  label { display: block; font-size: 12px; font-weight: 600; margin: 0 0 4px; color: #475569; }
+
+  /* Logo C2RMF */
+  .logo { background: var(--rouge); color: #fff; width: 88px; height: 88px; flex: 0 0 auto; display: flex; align-items: center; justify-content: center; text-align: center; border-radius: 3px; padding: 6px; }
+  .logo span { font-size: 7.5px; font-weight: 700; line-height: 1.18; letter-spacing: .02em; text-transform: uppercase; }
+  .logo.grande { width: 128px; height: 128px; padding: 9px; }
+  .logo.grande span { font-size: 10px; }
+
+  /* Boutons */
+  .btn { display: inline-flex; align-items: center; gap: 6px; border: 1px solid transparent; border-radius: 8px; padding: 8px 14px; font-size: 14px; font-weight: 500; background: var(--rouge); color: #fff; }
+  .btn:hover { background: var(--rouge-fonce); }
+  .btn.sortie { background: #fff; color: #334155; border-color: #cbd5e1; }
+  .btn.sortie:hover { background: #f1f5f9; }
+  .btn.icone { padding: 6px 9px; background: transparent; color: #475569; border: none; }
+  .btn.icone:hover { background: #f1f5f9; color: var(--texte); }
+  .btn.danger { color: #dc2626; }
+  .btn.danger:hover { background: #fef2f2; color: #b91c1c; }
+  .btn.petit { padding: 5px 10px; font-size: 13px; }
+
+  /* Connexion */
+  .connexion { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px; background: linear-gradient(160deg, var(--rouge-fonce) 0%, var(--rouge) 100%); }
+  .connexion-carte { background: #fff; border-radius: 16px; box-shadow: 0 20px 40px rgba(0,0,0,.25); padding: 32px; width: 100%; max-width: 420px; display: flex; flex-direction: column; align-items: center; gap: 12px; text-align: center; }
+  .connexion-carte h1 { font-size: 18px; margin: 4px 0 0; color: var(--rouge); }
+  .connexion-carte p { font-size: 13px; color: #64748b; margin: 0; }
+  .champ { width: 100%; text-align: left; }
+  .erreur { background: #fef2f2; border: 1px solid #fecaca; color: #b91c1c; border-radius: 8px; padding: 8px 12px; font-size: 13px; width: 100%; }
+
+  /* En-tête */
+  .entete { background: #fff; border-bottom: 4px solid var(--rouge); }
+  .entete-inner { max-width: 1280px; margin: 0 auto; padding: 12px 16px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; }
+  .marque { display: flex; align-items: center; gap: 12px; }
+  .marque-titre { font-size: 14px; font-weight: 700; color: var(--rouge); line-height: 1.2; }
+  .marque-sous { font-size: 11px; color: #94a3b8; }
+  .util { display: flex; align-items: center; gap: 10px; }
+  .util-nom { text-align: right; }
+  .util-nom p { margin: 0; }
+  .util-nom .n { font-size: 14px; font-weight: 600; color: #334155; }
+  .util-nom .r { font-size: 11px; color: var(--rouge); }
+  .onglets { max-width: 1280px; margin: 0 auto; padding: 0 16px; display: flex; flex-wrap: wrap; gap: 4px; }
+  .onglet { border: none; background: var(--rouge-tint); color: var(--rouge); font-weight: 500; font-size: 14px; padding: 8px 12px; border-radius: 8px 8px 0 0; display: flex; align-items: center; gap: 6px; }
+  .onglet.actif { background: var(--rouge); color: #fff; }
+  .lecture-seule { font-size: 11px; border: 1px solid #cbd5e1; color: #64748b; border-radius: 999px; padding: 3px 10px; }
+
+  .principal { max-width: 1280px; margin: 0 auto; padding: 24px 16px; }
+  .pied { border-top: 1px solid var(--bord); text-align: center; font-size: 11px; color: #94a3b8; padding: 16px; }
+  h2.vue-titre { font-size: 18px; color: var(--rouge); margin: 0; }
+  .vue-sous { font-size: 13px; color: #64748b; margin: 4px 0 0; }
+
+  /* Cartes et KPIs */
+  .grille-kpi { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); margin: 20px 0; }
+  .carte { background: #fff; border: 1px solid var(--bord); border-radius: 12px; }
+  .carte-titre { font-size: 14px; font-weight: 600; padding: 14px 16px 0; color: var(--rouge); }
+  .carte-corps { padding: 16px; }
+  .kpi { border-top: 4px solid var(--rouge); }
+  .kpi .etiquette { font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: #94a3b8; }
+  .kpi .valeur { font-size: 30px; font-weight: 700; margin-top: 4px; }
+
+  .grille-2 { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); }
+  .barres { display: flex; align-items: flex-end; gap: 10px; height: 160px; padding-top: 8px; }
+  .barre-col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; height: 100%; justify-content: flex-end; }
+  .barre { width: 100%; max-width: 46px; background: var(--rouge); border-radius: 6px 6px 0 0; }
+  .barre.vides { background: var(--bord); }
+  .barre-etiquette { font-size: 11px; color: #64748b; }
+  .barre-valeur { font-size: 11px; font-weight: 600; color: var(--rouge); }
+
+  .liste-semaine { display: flex; flex-direction: column; gap: 8px; }
+  .ligne-semaine { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; border: 1px solid #f1f5f9; border-radius: 8px; padding: 8px 12px; font-size: 14px; }
+  .ligne-semaine .gauche { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; min-width: 0; }
+  .jour-etiquette { font-size: 12px; font-weight: 600; color: #64748b; }
+
+  /* Badges */
+  .badge { display: inline-block; border-radius: 999px; border: 1px solid; font-size: 11px; padding: 2px 9px; font-weight: 500; }
+  .badge-batiment { color: var(--rouge); border-color: var(--rouge); background: var(--rouge-tint); }
+  .badge-mesures { font-size: 10px; font-weight: 600; padding: 2px 7px; border-radius: 999px; border: none; }
+
+  /* Planning */
+  .planning-tete { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
+  .semaine-selecteur { display: flex; align-items: center; gap: 8px; }
+  .semaine-titre { background: var(--rouge); color: #fff; font-weight: 600; font-size: 14px; padding: 7px 16px; border-radius: 8px; }
+  .grille-planning { display: grid; gap: 12px; grid-template-columns: repeat(5, 1fr); }
+  @media (max-width: 1100px) { .grille-planning { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 640px) { .grille-planning { grid-template-columns: 1fr; } }
+  .col-jour { border: 1px solid var(--bord); border-radius: 12px; background: #fff; overflow: hidden; }
+  .col-jour.today { border-color: var(--or); }
+  .col-jour-tete { padding: 8px 12px; font-size: 14px; font-weight: 600; background: var(--rouge-tint); color: var(--rouge); display: flex; justify-content: space-between; }
+  .col-jour.today .col-jour-tete { background: var(--or); color: #fff; }
+  .col-jour-tete .auj { font-size: 10px; text-transform: uppercase; align-self: center; }
+  .col-jour-corps { padding: 8px; display: flex; flex-direction: column; gap: 8px; min-height: 90px; }
+  .vide-jour { text-align: center; color: #cbd5e1; font-size: 12px; padding: 12px 0; }
+  .puce { width: 100%; text-align: left; background: #fff; border: 1px solid var(--bord); border-left: 3px solid var(--rouge); border-radius: 8px; padding: 8px; box-shadow: 0 1px 2px rgba(0,0,0,.04); }
+  .puce:hover { border-color: #94a3b8; box-shadow: 0 2px 8px rgba(0,0,0,.08); }
+  .puce-type { font-size: 12px; font-weight: 600; color: #1e293b; margin: 4px 0 2px; }
+  .puce-info { font-size: 11px; color: #64748b; }
+  .puce-hote { font-size: 11px; color: #94a3b8; margin-bottom: 4px; }
+
+  /* Tableau */
+  .tableau-defilant { overflow-x: auto; }
+  table { border-collapse: collapse; width: 100%; font-size: 13px; }
+  th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: .03em; color: #64748b; border-bottom: 1px solid var(--bord); padding: 10px 8px; white-space: nowrap; }
+  td { border-bottom: 1px solid #f1f5f9; padding: 9px 8px; vertical-align: top; }
+  tbody tr { cursor: pointer; }
+  tbody tr:hover { background: #fafbfc; }
+  .actions { text-align: right; white-space: nowrap; }
+  .actions .btn.icone { display: inline-flex; }
+  .filtres { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); padding: 16px; }
+  .barre-vue { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
+  .coche { color: var(--ok); font-weight: 700; }
+  .non-coche { color: #cbd5e1; }
+
+  /* Modales */
+  .voile { position: fixed; inset: 0; background: rgba(15,23,42,.45); display: flex; align-items: center; justify-content: center; z-index: 100; padding: 16px; }
+  .modale { background: #fff; border-radius: 14px; width: 100%; max-width: 640px; max-height: 88vh; overflow: auto; padding: 22px; }
+  .modale h3 { margin: 0 0 2px; color: var(--rouge); font-size: 16px; }
+  .modale .sous { font-size: 12px; color: #64748b; margin: 0 0 14px; }
+  .modale-pied { display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px; }
+  .form-grille { display: grid; gap: 12px; }
+  .form-2 { display: grid; gap: 12px; grid-template-columns: 1fr 1fr; }
+  @media (max-width: 560px) { .form-2 { grid-template-columns: 1fr; } }
+  .mesures-cadre { border: 1px solid var(--bord); background: #fbfcfe; border-radius: 8px; padding: 12px; display: grid; gap: 8px; grid-template-columns: 1fr 1fr; }
+  .mesure-case { display: flex; align-items: center; gap: 8px; font-size: 14px; }
+  .mesure-case input { width: auto; }
+  .detail-grille { display: grid; grid-template-columns: 150px 1fr; gap: 6px 10px; font-size: 14px; }
+  .detail-grille .cle { color: #94a3b8; }
+  .detail-mesures { margin-top: 12px; }
+  .detail-mesures .titre-mesures { font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: #94a3b8; font-weight: 600; margin-bottom: 6px; }
+  .detail-mesures .ligne { display: flex; align-items: center; gap: 8px; font-size: 14px; padding: 3px 0; }
+  .separateur { border: none; border-top: 1px solid var(--bord); margin: 14px 0; }
+
+  .compteur-role { display: flex; align-items: center; justify-content: space-between; }
+  .compteur-role .n { font-size: 24px; font-weight: 700; }
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<script>
+"use strict";
+
+/* ============================================================
+   CONSTANTES ET UTILITAIRES
+   ============================================================ */
+var MESURES = [
+  { id: "proxyclick", libelle: "Proxyclick", court: "Proxyclick", champ: "proxyclick", colonne: "proxyclick" },
+  { id: "visitePrevention", libelle: "Visite de prévention", court: "Visite prév.", champ: "visitePrevention", colonne: "visite_prevention" },
+  { id: "planPrevention", libelle: "Plan de prévention", court: "Plan prév.", champ: "planPrevention", colonne: "plan_prevention" },
+  { id: "registreSecurite", libelle: "Registre sécurité", court: "Registre", champ: "registreSecurite", colonne: "registre_securite" },
+  { id: "protocolePrevenance", libelle: "Protocole / Prévenance", court: "Protocole", champ: "protocolePrevenance", colonne: "protocole_prevenance" }
+];
+var JOURS = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi"];
+
+function esc(s) {
+  return String(s == null ? "" : s)
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+}
+function parseISO(s) { var p = s.split("-"); return new Date(Number(p[0]), Number(p[1]) - 1, Number(p[2])); }
+function toISO(d) {
+  return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+}
+function addDays(d, n) { var c = new Date(d.getTime()); c.setDate(c.getDate() + n); return c; }
+function lundi(d) { var c = new Date(d.getFullYear(), d.getMonth(), d.getDate()); c.setDate(c.getDate() - (c.getDay() + 6) % 7); return c; }
+function isoWeek(d) {
+  var t = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  t.setDate(t.getDate() - (t.getDay() + 6) % 7 + 3);
+  var j = new Date(t.getFullYear(), 0, 4);
+  j.setDate(j.getDate() - (j.getDay() + 6) % 7 + 3);
+  return 1 + Math.round((t.getTime() - j.getTime()) / 604800000);
+}
+function fmtLong(d) { return d.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric" }); }
+function fmtCourt(d) { return d.toLocaleDateString("fr-FR", { day: "numeric", month: "short" }); }
+function titreSemaine(l) {
+  var ven = addDays(l, 4);
+  function part(d) {
+    return String(d.getDate()).padStart(2, "0") + " " + d.toLocaleDateString("fr-FR", { month: "long" });
+  }
+  return "Semaine " + isoWeek(l) + " — du " + part(l) + " au " + part(ven) + " " + ven.getFullYear();
+}
+function nbMesures(i) {
+  var n = 0;
+  for (var k = 0; k < MESURES.length; k++) if (i[MESURES[k].champ]) n++;
+  return n;
+}
+
+/* Appel API générique */
+function api(chemin, methode, corps) {
+  var opts = { method: methode || "GET", headers: { "Content-Type": "application/json" } };
+  if (corps !== undefined) opts.body = JSON.stringify(corps);
+  return fetch("/api" + chemin, opts).then(function (r) {
+    return r.json().catch(function () { return {}; }).then(function (data) {
+      return { ok: r.ok, statut: r.status, data: data };
+    });
+  });
+}
+
+/* Normalisation : lignes SQL (snake_case) -> objet applicatif (camelCase) */
+function normaliser(i) {
+  return {
+    id: i.id,
+    date: String(i.date || "").slice(0, 10),
+    batiment: i.batiment,
+    type: i.type,
+    horaires: i.horaires,
+    hote: i.hote,
+    proxyclick: Boolean(i.proxyclick),
+    visitePrevention: Boolean(i.visite_prevention),
+    planPrevention: Boolean(i.plan_prevention),
+    registreSecurite: Boolean(i.registre_securite),
+    protocolePrevenance: Boolean(i.protocole_prevenance),
+    observations: i.observations,
+    creePar: i.cree_par_nom || "—"
+  };
+}
+
+/* ============================================================
+   ÉTAT GLOBAL
+   ============================================================ */
+var etat = {
+  moi: null,            // utilisateur connecté
+  interventions: [],
+  users: [],
+  vue: "dashboard",
+  sem: null,            // lundi de la semaine affichée
+  modale: null,         // "form" | "detail" | "user" | null
+  form: null,
+  editId: null,
+  detail: null,
+  userForm: null,
+  erreur: "",
+  recherche: "",
+  fBatiment: "tous",
+  fMesures: "toutes"
+};
+
+function peutModifier() { var r = etat.moi && etat.moi.role; return r === "admin" || r === "gestionnaire"; }
+function estAdmin() { return etat.moi && etat.moi.role === "admin"; }
+
+var App = {}; /* gestionnaires exposés au HTML (window.App) */
+
+/* ============================================================
+   CHARGEMENT DES DONNÉES
+   ============================================================ */
+App.charger = function () {
+  return api("/interventions").then(function (r) {
+    if (r.statut === 401) { etat.moi = null; rendu(); return; }
+    if (!r.ok) { etat.erreur = r.data.error || "Erreur de chargement."; return; }
+    etat.interventions = (r.data.interventions || []).map(normaliser);
+    /* semaine affichée : semaine courante, sinon première semaine avec données */
+    var courant = lundi(new Date());
+    var deb = toISO(courant), fin = toISO(addDays(courant, 6));
+    var dansSemaine = etat.interventions.some(function (i) { return i.date >= deb && i.date <= fin; });
+    if (!dansSemaine && etat.interventions.length > 0) {
+      courant = lundi(parseISO(etat.interventions.map(function (i) { return i.date; }).sort()[0]));
+    }
+    etat.sem = courant;
+    rendu();
+  });
+};
+
+App.chargerUsers = function () {
+  return api("/users").then(function (r) {
+    if (r.ok) { etat.users = r.data.users || []; rendu(); }
+    else { etat.erreur = r.data.error || "Erreur."; rendu(); }
+  });
+};
+
+App.deconnexion = function () {
+  api("/logout", "POST").then(function () { etat.moi = null; etat.vue = "dashboard"; rendu(); });
+};
+
+/* ============================================================
+   AUTHENTIFICATION
+   ============================================================ */
+App.connexion = function (ev) {
+  ev.preventDefault();
+  var email = document.getElementById("login-email").value.trim();
+  var mdp = document.getElementById("login-mdp").value;
+  etat.erreur = "";
+  api("/login", "POST", { email: email, password: mdp }).then(function (r) {
+    if (!r.ok) { etat.erreur = r.data.error || "Connexion impossible."; rendu(); return; }
+    etat.moi = r.data.user;
+    App.charger();
+  });
+  return false;
+};
+
+/* ============================================================
+   NAVIGATION
+   ============================================================ */
+App.setVue = function (v) {
+  etat.vue = v;
+  etat.erreur = "";
+  if (v === "utilisateurs" && estAdmin() && etat.users.length === 0) {
+    App.chargerUsers();
+    return;
+  }
+  rendu();
+};
+App.sem = function (delta) {
+  etat.sem = lundi(addDays(etat.sem, delta * 7));
+  rendu();
+};
+
+/* ============================================================
+   INTERVENTIONS : FORMULAIRE / DÉTAIL / SUPPRESSION
+   ============================================================ */
+App.ouvrirForm = function (dateDefaut) {
+  etat.modale = "form";
+  etat.editId = null;
+  etat.detail = null;
+  etat.erreur = "";
+  etat.form = {
+    date: dateDefaut || toISO(etat.sem || new Date()),
+    batiment: "", type: "", horaires: "", hote: "",
+    proxyclick: false, visitePrevention: false, planPrevention: false,
+    registreSecurite: false, protocolePrevenance: false,
+    observations: ""
+  };
+  rendu();
+};
+
+App.editer = function (id) {
+  var i = etat.interventions.find(function (x) { return String(x.id) === String(id); });
+  if (!i) return;
+  etat.modale = "form";
+  etat.editId = i.id;
+  etat.erreur = "";
+  etat.form = {
+    date: i.date, batiment: i.batiment, type: i.type, horaires: i.horaires, hote: i.hote,
+    proxyclick: i.proxyclick, visitePrevention: i.visitePrevention,
+    planPrevention: i.planPrevention, registreSecurite: i.registreSecurite,
+    protocolePrevenance: i.protocolePrevenance, observations: i.observations
+  };
+  rendu();
+};
+
+App.ouvrirDetail = function (id) {
+  var i = etat.interventions.find(function (x) { return String(x.id) === String(id); });
+  if (!i) return;
+  etat.modale = "detail";
+  etat.detail = i;
+  etat.erreur = "";
+  rendu();
+};
+
+App.fermerModale = function () {
+  etat.modale = null; etat.form = null; etat.editId = null; etat.detail = null;
+  etat.userForm = null; etat.erreur = "";
+  rendu();
+};
+
+App.setForm = function (champ, valeur) {
+  if (champ === "observations" || champ === "batiment" || champ === "type" ||
+      champ === "horaires" || champ === "hote" || champ === "date") {
+    etat.form[champ] = valeur;
+  } else {
+    etat.form[champ] = Boolean(valeur);
+  }
+};
+
+App.soumettreForm = function (ev) {
+  ev.preventDefault();
+  var f = etat.form;
+  var corps = {
+    date: f.date, batiment: f.batiment, type: f.type, horaires: f.horaires, hote: f.hote,
+    proxyclick: f.proxyclick, visite_prevention: f.visitePrevention,
+    plan_prevention: f.planPrevention, registre_securite: f.registreSecurite,
+    protocole_prevenance: f.protocolePrevenance, observations: f.observations
+  };
+  var promesse = etat.editId
+    ? api("/interventions/" + etat.editId, "PUT", corps)
+    : api("/interventions", "POST", corps);
+  promesse.then(function (r) {
+    if (!r.ok) { etat.erreur = r.data.error || "Enregistrement impossible."; rendu(); return; }
+    etat.modale = null; etat.form = null; etat.editId = null;
+    App.charger();
+  });
+  return false;
+};
+
+App.supprimer = function (id) {
+  if (!confirm("Supprimer définitivement cette intervention ?")) return;
+  api("/interventions/" + id, "DELETE").then(function (r) {
+    if (!r.ok) { etat.erreur = r.data.error || "Suppression impossible."; rendu(); return; }
+    App.charger();
+  });
+};
+
+/* ============================================================
+   FILTRES
+   ============================================================ */
+App.setRecherche = function (v) { etat.recherche = v; rendu(); };
+App.setFBatiment = function (v) { etat.fBatiment = v; rendu(); };
+App.setFMesures = function (v) { etat.fMesures = v; rendu(); };
+
+/* ============================================================
+   EXPORT CSV (format du tableau d'origine : « ; » et « o »)
+   ============================================================ */
+App.exporterCSV = function () {
+  var entetes = ["Date", "Bâtiment/Espace", "Type d'intervention", "Horaires/Durée", "Hôte",
+    "Proxyclick", "Visite de prévention", "Plan de prévention", "Registre sécurité",
+    "Protocole/Prévenance", "Observations/Remarques"];
+  var lignes = etat.interventions.map(function (i) {
+    return [fmtLong(parseISO(i.date)).replace(/^\S+ /, ""), i.batiment, i.type, i.horaires, i.hote,
+      i.proxyclick ? "o" : "", i.visitePrevention ? "o" : "", i.planPrevention ? "o" : "",
+      i.registreSecurite ? "o" : "", i.protocolePrevenance ? "o" : "", i.observations];
+  });
+  var csv = [entetes].concat(lignes).map(function (l) {
+    return l.map(function (c) { return '"' + String(c == null ? "" : c).replace(/"/g, '""') + '"'; }).join(";");
+  }).join("\r\n");
+  var blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8" });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement("a");
+  a.href = url; a.download = "interventions_c2rmf.csv";
+  document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
+};
+
+/* ============================================================
+   UTILISATEURS (admin)
+   ============================================================ */
+App.changerRole = function (userId, role) {
+  api("/users/" + userId + "/role", "PATCH", { role: role }).then(function (r) {
+    if (!r.ok) { alert(r.data.error || "Modification impossible."); App.chargerUsers(); return; }
+    App.chargerUsers();
+  });
+};
+
+App.ouvrirUser = function () {
+  etat.modale = "user";
+  etat.userForm = { nom: "", email: "", service: "", role: "visiteur", password: "" };
+  etat.erreur = "";
+  rendu();
+};
+
+App.setUserForm = function (champ, valeur) { etat.userForm[champ] = valeur; };
+
+App.soumettreUser = function (ev) {
+  ev.preventDefault();
+  api("/users", "POST", etat.userForm).then(function (r) {
+    if (!r.ok) { etat.erreur = r.data.error || "Création impossible."; rendu(); return; }
+    etat.modale = null; etat.userForm = null;
+    App.chargerUsers();
+  });
+  return false;
+};
+
+/* ============================================================
+   RENDU — écran de connexion
+   ============================================================ */
+function renduConnexion() {
+  return '<div class="connexion">' +
+    '<div class="connexion-carte">' +
+      '<div class="logo grande"><span>Centre de recherche et de restauration des musées de France</span></div>' +
+      '<h1>Planification des interventions</h1>' +
+      '<p>Accès réservé — identifiez-vous avec votre compte institutionnel.</p>' +
+      (etat.erreur ? '<div class="erreur">' + esc(etat.erreur) + '</div>' : '') +
+      '<form class="champ" onsubmit="return App.connexion(event)">' +
+        '<div style="margin-bottom:12px"><label for="login-email">Email professionnel</label>' +
+        '<input id="login-email" type="email" autocomplete="username" required placeholder="prenom.nom@c2rmf.fr"></div>' +
+        '<div style="margin-bottom:16px"><label for="login-mdp">Mot de passe</label>' +
+        '<input id="login-mdp" type="password" autocomplete="current-password" required></div>' +
+        '<button class="btn" type="submit" style="width:100%;justify-content:center">Se connecter</button>' +
+      '</form>' +
+    '</div></div>';
+}
+
+/* ============================================================ */
+/* RENDU — tableaux de bord, planning, liste, utilisateurs        */
+/* ============================================================ */
+
+function piluleMesures(i) {
+  var n = nbMesures(i);
+  var c = n === 5 ? "var(--ok)" : n >= 1 ? "var(--attention)" : "#94a3b8";
+  return '<span class="badge-mesures" style="color:' + c + ';background:' + c + '22">Mesures ' + n + '/5</span>';
+}
+function badgeBatiment(b) { return '<span class="badge badge-batiment">' + esc(b) + '</span>'; }
+function caseMesure(cochee) { return cochee ? '<span class="coche">&#10003;</span>' : '<span class="non-coche">—</span>'; }
+
+function interventionsSemaine() {
+  var deb = toISO(etat.sem), fin = toISO(addDays(etat.sem, 6));
+  return etat.interventions.filter(function (i) { return i.date >= deb && i.date <= fin; });
+}
+
+/* --- Tableau de bord --- */
+function renduDashboard() {
+  var sem = interventionsSemaine();
+  var total = sem.length * MESURES.length;
+  var cochees = sem.reduce(function (n, i) { return n + nbMesures(i); }, 0);
+  var jours = {}; sem.forEach(function (i) { jours[i.date] = true; });
+  var sansHote = sem.filter(function (i) { return !String(i.hote || "").trim(); }).length;
+
+  var kpis = [
+    { l: "Interventions cette semaine", v: String(sem.length), c: "var(--rouge)" },
+    { l: "Mesures cochées", v: total > 0 ? cochees + " / " + total : "0", c: total > 0 && cochees === total ? "var(--ok)" : "var(--attention)" },
+    { l: "Jours couverts", v: Object.keys(jours).length + " / 5", c: "var(--or)" },
+    { l: "Sans hôte désigné", v: String(sansHote), c: "var(--attention)" }
+  ];
+
+  function barres(donnees, max) {
+    var html = '<div class="barres">';
+    donnees.forEach(function (d) {
+      var h = max > 0 ? Math.round((d.valeur / max) * 100) : 0;
+      if (h === 0) h = 4;
+      html += '<div class="barre-col">' +
+        '<span class="barre-valeur">' + d.valeur + '</span>' +
+        '<div class="barre' + (d.valeur === 0 ? ' vides' : '') + '" style="height:' + h + '%"></div>' +
+        '<span class="barre-etiquette">' + esc(d.nom) + '</span></div>';
+    });
+    return html + '</div>';
+  }
+
+  var parJour = JOURS.map(function (j, k) {
+    var iso = toISO(addDays(etat.sem, k));
+    return { nom: j.slice(0, 3), valeur: sem.filter(function (i) { return i.date === iso; }).length };
+  });
+  var parMesure = MESURES.map(function (m) {
+    return { nom: m.court, valeur: sem.filter(function (i) { return i[m.champ]; }).length };
+  });
+  var maxJ = Math.max.apply(null, parJour.map(function (d) { return d.valeur; }).concat([1]));
+  var maxM = Math.max.apply(null, parMesure.map(function (d) { return d.valeur; }).concat([1]));
+
+  var liste = sem.slice().sort(function (a, b) { return a.date < b.date ? -1 : 1; }).map(function (i) {
+    return '<div class="ligne-semaine"><div class="gauche">' +
+      '<span class="jour-etiquette">' + esc(fmtCourt(parseISO(i.date))) + '</span>' +
+      badgeBatiment(i.batiment) +
+      '<span>' + esc(i.type) + '</span></div>' + piluleMesures(i) + '</div>';
+  }).join("");
+
+  return '<div>' +
+    '<h2 class="vue-titre">Tableau de bord</h2>' +
+    '<p class="vue-sous">' + esc(titreSemaine(etat.sem)) + '</p>' +
+    '<div class="grille-kpi">' + kpis.map(function (k) {
+      return '<div class="carte kpi" style="border-top-color:' + k.c + '"><div class="carte-corps">' +
+        '<div class="etiquette">' + esc(k.l) + '</div><div class="valeur" style="color:' + k.c + '">' + esc(k.v) + '</div></div></div>';
+    }).join("") + '</div>' +
+    '<div class="grille-2">' +
+      '<div class="carte"><div class="carte-titre">Interventions par jour</div><div class="carte-corps">' + barres(parJour, maxJ) + '</div></div>' +
+      '<div class="carte"><div class="carte-titre">Mesures de sécurité cochées</div><div class="carte-corps">' + barres(parMesure, maxM) + '</div></div>' +
+    '</div>' +
+    '<div class="carte" style="margin-top:16px"><div class="carte-titre">Interventions de la semaine</div><div class="carte-corps">' +
+      (sem.length === 0 ? '<p style="text-align:center;color:#94a3b8;margin:8px 0">Rien de planifié pour cette semaine.</p>' : '<div class="liste-semaine">' + liste + '</div>') +
+    '</div></div>' +
+  '</div>';
+}
+
+/* --- Planning hebdomadaire --- */
+function renduPlanning() {
+  var today = toISO(new Date());
+  var cols = "";
+  for (var k = 0; k < 5; k++) {
+    var d = addDays(etat.sem, k);
+    var iso = toISO(d);
+    var items = etat.interventions.filter(function (i) { return i.date === iso; });
+    var puces = items.map(function (i) {
+      return '<button class="puce" onclick="App.ouvrirDetail(' + i.id + ')">' +
+        badgeBatiment(i.batiment) +
+        '<div class="puce-type">' + esc(i.type) + '</div>' +
+        (i.horaires ? '<div class="puce-info">' + esc(i.horaires) + '</div>' : '') +
+        (i.hote ? '<div class="puce-hote">Hôte : ' + esc(i.hote) + '</div>' : '') +
+        piluleMesures(i) + '</button>';
+    }).join("");
+    cols += '<div class="col-jour' + (iso === today ? ' today' : '') + '">' +
+      '<div class="col-jour-tete"><span>' + JOURS[k] + ' ' + String(d.getDate()).padStart(2, "0") + '</span>' +
+      (iso === today ? '<span class="auj">aujourd&#39;hui</span>' : '') + '</div>' +
+      '<div class="col-jour-corps">' + (items.length === 0 ? '<div class="vide-jour">—</div>' : puces) + '</div></div>';
+  }
+  return '<div>' +
+    '<div class="planning-tete">' +
+      '<div class="semaine-selecteur">' +
+        '<button class="btn sortie petit" onclick="App.sem(-1)">&#8592;</button>' +
+        '<span class="semaine-titre">' + esc(titreSemaine(etat.sem)) + '</span>' +
+        '<button class="btn sortie petit" onclick="App.sem(1)">&#8594;</button>' +
+      '</div>' +
+      (peutModifier() ? '<button class="btn" onclick="App.ouvrirForm(\'' + toISO(etat.sem) + '\')">+ Nouvelle intervention</button>' : '') +
+    '</div>' +
+    '<div class="grille-planning">' + cols + '</div>' +
+  '</div>';
+}
+
+/* --- Tableau des interventions --- */
+function renduListe() {
+  var batiments = [];
+  etat.interventions.forEach(function (i) {
+    if (i.batiment && batiments.indexOf(i.batiment) === -1) batiments.push(i.batiment);
+  });
+  var q = etat.recherche.trim().toLowerCase();
+  var resultats = etat.interventions.filter(function (i) {
+    var texte = (i.batiment + " " + i.type + " " + i.hote + " " + i.observations).toLowerCase();
+    var okQ = q === "" || texte.indexOf(q) !== -1;
+    var okB = etat.fBatiment === "tous" || i.batiment === etat.fBatiment;
+    var okM = etat.fMesures === "toutes" ||
+      (etat.fMesures === "completes" && nbMesures(i) === MESURES.length) ||
+      (etat.fMesures === "incompletes" && nbMesures(i) < MESURES.length);
+    return okQ && okB && okM;
+  });
+
+  var lignes = resultats.slice().sort(function (a, b) { return a.date < b.date ? -1 : 1; }).map(function (i) {
+    return '<tr onclick="App.ouvrirDetail(' + i.id + ')">' +
+      '<td>' + esc(fmtLong(parseISO(i.date)).replace(/^\S+ /, "")) + '</td>' +
+      '<td>' + badgeBatiment(i.batiment) + '</td>' +
+      '<td><b>' + esc(i.type) + '</b></td>' +
+      '<td>' + esc(i.horaires || "—") + '</td>' +
+      '<td>' + esc(i.hote || "—") + '</td>' +
+      MESURES.map(function (m) { return '<td style="text-align:center">' + caseMesure(i[m.champ]) + '</td>'; }).join("") +
+      '<td>' + esc(i.observations || "—") + '</td>' +
+      '<td class="actions">' +
+        (peutModifier() ? '<button class="btn icone" title="Modifier" onclick="event.stopPropagation();App.editer(' + i.id + ')">&#9998;</button>' : '') +
+        (estAdmin() ? '<button class="btn icone danger" title="Supprimer" onclick="event.stopPropagation();App.supprimer(' + i.id + ')">&#128465;</button>' : '') +
+      '</td></tr>';
+  }).join("");
+
+  return '<div>' +
+    '<div class="barre-vue">' +
+      '<h2 class="vue-titre">Tableau des interventions (' + resultats.length + ')</h2>' +
+      '<div style="display:flex;gap:8px;flex-wrap:wrap">' +
+        '<button class="btn sortie" onclick="App.exporterCSV()">Exporter CSV</button>' +
+        (peutModifier() ? '<button class="btn" onclick="App.ouvrirForm()">+ Nouvelle intervention</button>' : '') +
+      '</div>' +
+    '</div>' +
+    '<div class="carte" style="margin-bottom:16px"><div class="filtres">' +
+      '<div><label>Recherche</label><input value="' + esc(etat.recherche) + '" oninput="App.setRecherche(this.value)" placeholder="Bâtiment, type, hôte…"></div>' +
+      '<div><label>Bâtiment</label><select onchange="App.setFBatiment(this.value)">' +
+        '<option value="tous">Tous les bâtiments</option>' +
+        batiments.map(function (b) {
+          return '<option value="' + esc(b) + '"' + (etat.fBatiment === b ? ' selected' : '') + '>' + esc(b) + '</option>';
+        }).join("") + '</select></div>' +
+      '<div><label>Mesures</label><select onchange="App.setFMesures(this.value)">' +
+        '<option value="toutes">Toutes les interventions</option>' +
+        '<option value="completes"' + (etat.fMesures === "completes" ? ' selected' : '') + '>Mesures complètes (5/5)</option>' +
+        '<option value="incompletes"' + (etat.fMesures === "incompletes" ? ' selected' : '') + '>Mesures incomplètes</option>' +
+      '</select></div>' +
+    '</div></div>' +
+    '<div class="carte"><div class="tableau-defilant">' +
+      '<table><thead><tr>' +
+        '<th>Date</th><th>Bâtiment / Espace</th><th>Type d&#39;intervention</th><th>Horaires / Durée</th><th>Hôte</th>' +
+        MESURES.map(function (m) { return '<th>' + esc(m.court) + '</th>'; }).join("") +
+        '<th>Observations</th><th style="text-align:right">Actions</th>' +
+      '</tr></thead><tbody>' +
+      (lignes || '<tr><td colspan="12" style="text-align:center;color:#94a3b8;padding:24px">Aucune intervention ne correspond aux filtres.</td></tr>') +
+      '</tbody></table></div></div>' +
+  '</div>';
+}
+
+/* --- Utilisateurs (admin) --- */
+function renduUsers() {
+  var compte = function (r) { return etat.users.filter(function (u) { return u.role === r; }).length; };
+  var couleurs = { admin: "var(--rouge)", gestionnaire: "var(--or)", visiteur: "#64748b" };
+  var noms = { admin: "Administrateur", gestionnaire: "Gestionnaire", visiteur: "Visiteur" };
+
+  var lignes = etat.users.map(function (u) {
+    return '<tr>' +
+      '<td><b>' + esc(u.nom) + '</b></td>' +
+      '<td>' + esc(u.email) + '</td>' +
+      '<td>' + esc(u.service) + '</td>' +
+      '<td><select style="width:160px" onchange="App.changerRole(' + u.id + ', this.value)"' +
+        (u.id === etat.moi.id ? ' disabled title="Vous ne pouvez pas modifier votre propre rôle."' : '') + '>' +
+        ['admin', 'gestionnaire', 'visiteur'].map(function (r) {
+          return '<option value="' + r + '"' + (u.role === r ? ' selected' : '') + '>' + noms[r] + '</option>';
+        }).join("") + '</select></td></tr>';
+  }).join("");
+
+  return '<div>' +
+    '<div class="barre-vue">' +
+      '<h2 class="vue-titre">Gestion des utilisateurs</h2>' +
+      '<button class="btn" onclick="App.ouvrirUser()">+ Ajouter un utilisateur</button>' +
+    '</div>' +
+    '<div class="grille-kpi">' +
+      ['admin', 'gestionnaire', 'visiteur'].map(function (r) {
+        return '<div class="carte kpi" style="border-top-color:' + couleurs[r] + '"><div class="carte-corps compteur-role">' +
+          '<div><div class="etiquette">' + noms[r] + '</div><div class="n" style="color:' + couleurs[r] + '">' + compte(r) + '</div></div>' +
+          '</div></div>';
+      }).join("") + '</div>' +
+    '<div class="carte"><div class="tableau-defilant"><table>' +
+      '<thead><tr><th>Nom</th><th>Email</th><th>Service</th><th>Rôle</th></tr></thead>' +
+      '<tbody>' + lignes + '</tbody></table></div></div>' +
+  '</div>';
+}
+
+/* --- Modales --- */
+function renduModaleForm() {
+  var f = etat.form;
+  return '<div class="voile" onclick="if(event.target===this)App.fermerModale()"><div class="modale">' +
+    '<h3>' + (etat.editId ? "Modifier l&#39;intervention" : "Nouvelle intervention") + '</h3>' +
+    '<p class="sous">Renseignez l&#39;intervention et cochez les mesures de sécurité applicables.</p>' +
+    (etat.erreur ? '<div class="erreur" style="margin-bottom:12px">' + esc(etat.erreur) + '</div>' : '') +
+    '<form onsubmit="return App.soumettreForm(event)"><div class="form-grille">' +
+      '<div class="form-2">' +
+        '<div><label>Date *</label><input type="date" required value="' + esc(f.date) + '" oninput="App.setForm(\'date\', this.value)"></div>' +
+        '<div><label>Bâtiment / Espace *</label><input required value="' + esc(f.batiment) + '" oninput="App.setForm(\'batiment\', this.value)" placeholder="Ex. ADS, Petite Écurie…"></div>' +
+      '</div>' +
+      '<div><label>Type d&#39;intervention *</label><input required value="' + esc(f.type) + '" oninput="App.setForm(\'type\', this.value)" placeholder="Ex. INTERVENTION REGLAGE DES PORTES"></div>' +
+      '<div class="form-2">' +
+        '<div><label>Horaires / Durée</label><input value="' + esc(f.horaires) + '" oninput="App.setForm(\'horaires\', this.value)" placeholder="Ex. 9h00 – 12h00 (3h)"></div>' +
+        '<div><label>Hôte</label><input value="' + esc(f.hote) + '" oninput="App.setForm(\'hote\', this.value)" placeholder="Personne qui accueille"></div>' +
+      '</div>' +
+      '<div><label style="margin-bottom:6px">Mesures de sécurité</label><div class="mesures-cadre">' +
+        MESURES.map(function (m) {
+          return '<label class="mesure-case"><input type="checkbox"' + (f[m.champ] ? ' checked' : '') +
+            ' onchange="App.setForm(\'' + m.champ + '\', this.checked)">' + esc(m.libelle) + '</label>';
+        }).join("") + '</div></div>' +
+      '<div><label>Observations / Remarques</label><textarea rows="3" oninput="App.setForm(\'observations\', this.value)">' + esc(f.observations) + '</textarea></div>' +
+    '</div>' +
+    '<div class="modale-pied">' +
+      '<button type="button" class="btn sortie" onclick="App.fermerModale()">Annuler</button>' +
+      '<button type="submit" class="btn">Enregistrer</button>' +
+    '</div></form></div></div>';
+}
+
+function renduModaleDetail() {
+  var i = etat.detail;
+  return '<div class="voile" onclick="if(event.target===this)App.fermerModale()"><div class="modale">' +
+    '<h3>' + esc(i.type) + '</h3>' +
+    '<p class="sous">' + esc(fmtLong(parseISO(i.date))) + (i.horaires ? ' — ' + esc(i.horaires) : '') + '</p>' +
+    '<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px">' + badgeBatiment(i.batiment) + piluleMesures(i) + '</div>' +
+    '<div class="detail-grille">' +
+      '<span class="cle">Hôte</span><span>' + esc(i.hote || "—") + '</span>' +
+      '<span class="cle">Observations</span><span>' + esc(i.observations || "—") + '</span>' +
+      '<span class="cle">Enregistrée par</span><span>' + esc(i.creePar) + '</span>' +
+    '</div>' +
+    '<hr class="separateur">' +
+    '<div class="detail-mesures"><div class="titre-mesures">Mesures de sécurité</div>' +
+      MESURES.map(function (m) {
+        return '<div class="ligne">' + caseMesure(i[m.champ]) +
+          '<span style="' + (i[m.champ] ? '' : 'color:#94a3b8') + '">' + esc(m.libelle) + '</span></div>';
+      }).join("") + '</div>' +
+    '<div class="modale-pied">' +
+      '<button class="btn sortie" onclick="App.fermerModale()">Fermer</button>' +
+      (peutModifier() ? '<button class="btn" onclick="App.editer(' + i.id + ')">Modifier</button>' : '') +
+    '</div></div></div>';
+}
+
+function renduModaleUser() {
+  var f = etat.userForm;
+  return '<div class="voile" onclick="if(event.target===this)App.fermerModale()"><div class="modale" style="max-width:520px">' +
+    '<h3>Nouvel utilisateur</h3>' +
+    '<p class="sous">Créez un compte et attribuez-lui un niveau d&#39;accès. Le mot de passe (10 caractères minimum) devra être communiqué à la personne concernée.</p>' +
+    (etat.erreur ? '<div class="erreur" style="margin-bottom:12px">' + esc(etat.erreur) + '</div>' : '') +
+    '<form onsubmit="return App.soumettreUser(event)"><div class="form-grille">' +
+      '<div><label>Nom complet *</label><input required value="' + esc(f.nom) + '" oninput="App.setUserForm(\'nom\', this.value)"></div>' +
+      '<div><label>Email professionnel *</label><input type="email" required value="' + esc(f.email) + '" oninput="App.setUserForm(\'email\', this.value)" placeholder="prenom.nom@c2rmf.fr"></div>' +
+      '<div><label>Service / département</label><input value="' + esc(f.service) + '" oninput="App.setUserForm(\'service\', this.value)"></div>' +
+      '<div class="form-2">' +
+        '<div><label>Rôle</label><select onchange="App.setUserForm(\'role\', this.value)">' +
+          '<option value="admin"' + (f.role === 'admin' ? ' selected' : '') + '>Administrateur</option>' +
+          '<option value="gestionnaire"' + (f.role === 'gestionnaire' ? ' selected' : '') + '>Gestionnaire</option>' +
+          '<option value="visiteur"' + (f.role === 'visiteur' ? ' selected' : '') + '>Visiteur</option>' +
+        '</select></div>' +
+        '<div><label>Mot de passe *</label><input type="text" required minlength="10" value="' + esc(f.password) + '" oninput="App.setUserForm(\'password\', this.value)"></div>' +
+      '</div>' +
+    '</div>' +
+    '<div class="modale-pied">' +
+      '<button type="button" class="btn sortie" onclick="App.fermerModale()">Annuler</button>' +
+      '<button type="submit" class="btn">Créer le compte</button>' +
+    '</div></form></div></div>';
+}
+
+/* ============================================================
+   RENDU GLOBAL
+   ============================================================ */
+function rendu() {
+  var app = document.getElementById("app");
+  if (!etat.moi) { app.innerHTML = renduConnexion(); return; }
+
+  var onglets = [
+    { id: "dashboard", label: "Tableau de bord", actif: true },
+    { id: "planning", label: "Planning hebdomadaire", actif: true },
+    { id: "liste", label: "Tableau des interventions", actif: true },
+    { id: "utilisateurs", label: "Utilisateurs", actif: estAdmin() }
+  ].filter(function (o) { return o.actif; });
+
+  var contenu =
+    etat.vue === "dashboard" ? renduDashboard() :
+    etat.vue === "planning" ? renduPlanning() :
+    etat.vue === "liste" ? renduListe() :
+    etat.vue === "utilisateurs" ? renduUsers() : "";
+
+  var html =
+    '<header class="entete">' +
+      '<div class="entete-inner">' +
+        '<div class="marque">' +
+          '<div class="logo"><span>Centre de recherche et de restauration des musées de France</span></div>' +
+          '<div><div class="marque-titre">Planification des interventions</div>' +
+          '<div class="marque-sous">Centre de recherche et de restauration des musées de France</div></div>' +
+        '</div>' +
+        '<div class="util">' +
+          (etat.moi.role === "visiteur" ? '<span class="lecture-seule">Lecture seule</span>' : '') +
+          '<div class="util-nom"><p class="n">' + esc(etat.moi.nom) + '</p>' +
+          '<p class="r">' + esc(({ admin: "Administrateur", gestionnaire: "Gestionnaire", visiteur: "Visiteur" })[etat.moi.role]) + '</p></div>' +
+          '<button class="btn sortie petit" onclick="App.deconnexion()">Déconnexion</button>' +
+        '</div>' +
+      '</div>' +
+      '<nav class="onglets">' + onglets.map(function (o) {
+        return '<button class="onglet' + (etat.vue === o.id ? ' actif' : '') + '" onclick="App.setVue(\'' + o.id + '\')">' + o.label + '</button>';
+      }).join("") + '</nav>' +
+    '</header>' +
+    '<main class="principal">' + (etat.erreur && !etat.modale ? '<div class="erreur" style="margin-bottom:12px">' + esc(etat.erreur) + '</div>' : '') + contenu + '</main>' +
+    '<footer class="pied">C2RMF — Service à compétence nationale du ministère de la Culture · Outil interne de planification des interventions</footer>';
+
+  if (etat.modale === "form") html += renduModaleForm();
+  if (etat.modale === "detail") html += renduModaleDetail();
+  if (etat.modale === "user") html += renduModaleUser();
+
+  app.innerHTML = html;
+}
+
+/* ============================================================
+   DÉMARRAGE
+   ============================================================ */
+window.App = App;
+api("/me").then(function (r) {
+  if (r.ok) {
+    etat.moi = r.data.user;
+    App.charger();
+  } else {
+    rendu();
+  }
+});
+</script>
+</body>
+</html>
